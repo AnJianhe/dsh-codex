@@ -74,14 +74,17 @@ export function codexModelStream(
   config: PresetConfig,
   deps?: StreamDeps,
 ): (presetId: string, request: ModelTurnRequest) => AsyncGenerator<ModelStreamChunk> | undefined {
-  return (presetId: string, request: ModelTurnRequest): AsyncGenerator<ModelStreamChunk> | undefined => {
-    const preset = config.presets[presetId]
-    if (preset === undefined || preset.agent !== 'codex-global') return undefined
-
-    // Register publisher for this preset
-    if (deps?.onRuntimeModels) {
-      publishers.set(presetId, (models) => deps.onRuntimeModels!(presetId, models))
-      // Publish initial catalog
+  // Register publishers for all codex-global presets upfront so models are
+  // available in the picker before the first stream call.
+  if (deps?.onRuntimeModels) {
+    for (const [presetId, preset] of Object.entries(config.presets)) {
+      if (preset.agent !== 'codex-global') continue
+      if (!publishers.has(presetId)) {
+        publishers.set(presetId, (models) => deps.onRuntimeModels!(presetId, models))
+      }
+    }
+    // Trigger initial catalog load for all registered publishers
+    for (const presetId of publishers.keys()) {
       loadCatalog().then(catalog => {
         const reported: CodexReportedModel[] = catalog.map(m => ({
           id: m.id,
@@ -92,6 +95,11 @@ export function codexModelStream(
         deps.onRuntimeModels!(presetId, reported)
       }).catch(() => {})
     }
+  }
+
+  return (presetId: string, request: ModelTurnRequest): AsyncGenerator<ModelStreamChunk> | undefined => {
+    const preset = config.presets[presetId]
+    if (preset === undefined || preset.agent !== 'codex-global') return undefined
 
     return streamCodex(presetId, request)
   }
