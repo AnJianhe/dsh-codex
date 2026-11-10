@@ -62,3 +62,10 @@
       inject:
         - webServer
         - connection
+
+    # Codex 宿主路由：会话状态与模型清单。
+    - id: acp-codex-routes
+      name: '@goodjin2/dsh-codex/codex-routes'
+      inject:
+        - webServer
+        - connection
