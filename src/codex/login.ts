@@ -19,8 +19,8 @@ const AUTHORIZE_URL = 'https://auth.openai.com/oauth/authorize'
 /** Token 交换端点。 */
 const TOKEN_URL = 'https://auth.openai.com/oauth/token'
 
-/** 回调端口（与 Codex CLI 相同）。 */
-const CALLBACK_PORT = 1455
+/** 回调端口（用 1456 避免与 Codex 桌面版的 1455 冲突）。 */
+const CALLBACK_PORT = 1456
 
 /** 登录会话（等待回调中）。 */
 type LoginSession = {
