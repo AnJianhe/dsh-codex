@@ -4,8 +4,12 @@
  * 每次推理响应后从 x-codex-* 头更新缓存，GET /acp-codex/quota 路由对外提供。
  */
 
+import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { CodexQuota } from './endpoints.ts'
 import { parseQuotaHeaders } from './endpoints.ts'
+
+export const name = 'acp-codex-quota'
+export const inject = ['webServer', 'connection']
 
 /** 模块级配额缓存。 */
 let cachedQuota: CodexQuota | undefined
@@ -35,24 +39,39 @@ export function getQuota(): CodexQuota | undefined {
   return cachedQuota
 }
 
-/**
- * 注册配额路由。
- * GET /acp-codex/quota → { ok: true, quota } 或 { ok: false, error: '尚无推理数据' }
- */
-export function registerQuotaRoute(ctx: {
+function send(res: ServerResponse, data: unknown, status = 200): void {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
+  res.end(JSON.stringify(data))
+}
+
+type RouteContext = {
   effect: (fn: () => unknown) => unknown
-  webServer: { register: (route: { path: string; method: string; handler: () => unknown }) => () => void }
-}): void {
+  webServer: {
+    register: (route: {
+      kind: 'exact'
+      path: string
+      handler: (req: IncomingMessage, res: ServerResponse) => void | Promise<void>
+    }) => (() => void) | void
+  }
+  connection: {
+    admit: (req: IncomingMessage) => { rejection: number } | { peer: unknown }
+  }
+}
+
+export function apply(ctx: RouteContext): void {
   ctx.effect(() => {
     ctx.webServer.register({
+      kind: 'exact',
       path: '/acp-codex/quota',
-      method: 'GET',
-      handler: () => {
+      async handler(req, res) {
+        const admission = ctx.connection.admit(req)
+        if ('rejection' in admission) { res.writeHead(admission.rejection); res.end('unauthorized'); return }
         const quota = getQuota()
         if (quota === undefined) {
-          return { ok: false, error: '尚无推理数据' }
+          send(res, { ok: false, error: '尚无推理数据' })
+          return
         }
-        return { ok: true, quota }
+        send(res, { ok: true, quota })
       },
     })
   })
