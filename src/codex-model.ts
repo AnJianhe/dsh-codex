@@ -183,7 +183,6 @@ async function* streamCodex(
 
   // Convert ReadableStream to AsyncIterable<string | Uint8Array>
   const reader = bodyStream.getReader()
-  const decoder = new TextDecoder()
   let textIndex = -1
   let reasoningIndex = -1
   let toolIndex = -1
