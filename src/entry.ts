@@ -1,12 +1,125 @@
 /**
- * dsh-codex: Codex 模型行——直接 HTTP 调用 /responses 端点。
+ * dsh-codex: Codex 模型行——DSH 真正加载的那一行。
  *
- * 复用本地 Codex CLI 的 OAuth 凭据（~/.codex/auth.json），不需要 ACP 子进程、
- * 不需要 WASM 签名。DSH 自己的循环负责工具/审批/编排，这一行只回答「向模型要下一句话」。
+ * Codex 是**模型**，不是外部 agent——DSH 自己的循环已经会读文件、跑命令、请求
+ * 批准、取消、写会话了，这一行只回答「向模型要下一句话」：解出 Codex 凭据、
+ * 把这一轮的历史与工具发出去、把回来的文本/推理/工具调用交回循环。
+ *
+ * 登录、清单、请求、配额都在 `codex/*` 里；浏览器侧的账号设置与模型勾选
+ * 是另一套（见 `./client`）。
  */
+
+import Schema from '@deepseek-ai/schemastery'
+import { modelRowAdapter, providerRoute, runtimeModels } from './modelkit/index.ts'
+import type { ReportedModel } from './modelkit/index.ts'
+import { codexModelStream } from './codex-model.ts'
+import type { PresetConfig } from './registry.ts'
 
 export const name = '@goodjin2/dsh-codex'
 
-export function apply(_ctx: unknown, _config: unknown): void {
-  // Stub — full implementation in Task 8
+/** 一个模型在目录/选择器里怎么显示。 */
+const Model = Schema.object({
+  id: Schema.string().required(),
+  name: Schema.string().required(),
+  description: Schema.string(),
+  contextWindow: Schema.number(),
+})
+
+/** 一档推理强度。 */
+const Effort = Schema.object({
+  id: Schema.string().required(),
+  name: Schema.string(),
+})
+
+export const Config: Schema<Config> = Schema.object({
+  /**
+   * 这一行所属的 preset id。宿主把 preset 路由成 `acp:<presetId>`，目录与运行时
+   * 账本都按它认这一行。
+   */
+  presetId: Schema.string().required(),
+  /** 用哪个 agent 的方言；Codex 这一行恒为 `codex-global`。 */
+  agent: Schema.string().required(),
+  /** 这一行声明要提供哪些模型（白名单）。 */
+  models: Schema.array(Model),
+  /**
+   * 是否把同 base 的 `[effort]` 折成一条。
+   */
+  collapseEfforts: Schema.boolean(),
+  /**
+   * 名册过滤标记。
+   */
+  hideFromRoster: Schema.boolean(),
+  /** 兜底强度档位；折叠不到强度时用来给每个模型挂强度轴。 */
+  efforts: Schema.array(Effort),
+})
+
+export type Config = {
+  presetId: string
+  agent: string
+  models?: { id: string; name: string; description?: string; contextWindow?: number }[]
+  collapseEfforts?: boolean
+  hideFromRoster?: boolean
+  efforts?: { id: string; name?: string }[]
+}
+
+/**
+ * 把 Codex 这一行接进宿主的模型目录。
+ */
+export function apply(ctx: unknown, config: Config): void {
+  const presets: PresetConfig = {
+    presets: {
+      [config.presetId]: {
+        agent: config.agent,
+        ...(config.models === undefined ? {} : { models: config.models }),
+      },
+    },
+  }
+
+  // 运行时账本：登录后站点给的清单写进它，选择器以它为准；拉不到就用挂载行声明的兜底。
+  const ledger = runtimeModels()
+  const onRuntimeModels = (presetId: string, models: readonly ReportedModel[]): void => {
+    ledger.record(presetId, models)
+  }
+
+  const adapter = modelRowAdapter({
+    presetId: config.presetId,
+    displayName: 'Codex',
+    declaredModels: config.models ?? [],
+    runtimeModelsOf: (presetId: string): readonly ReportedModel[] | undefined => ledger.modelsOf(presetId),
+    modelStream: codexModelStream(presets, { onRuntimeModels }),
+    collapseEfforts: config.collapseEfforts,
+    efforts: config.efforts,
+  })
+
+  const registry = registryOf(ctx)
+  if (registry === undefined) {
+    process.stderr.write(`[codex] no host model directory; the ${config.presetId} row is registered but invisible to the picker\n`)
+    return
+  }
+  registry.registerAdapter([providerRoute(config.presetId)], adapter)
+}
+
+type RegistryLike = {
+  registerAdapter(providers: string[], adapter: unknown): unknown
+}
+
+/**
+ * 读宿主的 LLM 模型目录，或 `undefined`（这台宿主没有目录）。
+ */
+function registryOf(ctx: unknown): RegistryLike | undefined {
+  if (typeof ctx !== 'object' || ctx === null) return undefined
+  const getter = ctx as { get?: unknown }
+  let llm: unknown
+  if (typeof getter.get === 'function') {
+    llm = (getter.get as (key: string) => unknown).call(ctx, 'llm')
+  } else {
+    try {
+      llm = (ctx as { llm?: unknown }).llm
+    } catch {
+      return undefined
+    }
+  }
+  if (typeof llm !== 'object' || llm === null) return undefined
+  const register = (llm as { registerAdapter?: unknown }).registerAdapter
+  return typeof register === 'function' ? (llm as RegistryLike) : undefined
 }

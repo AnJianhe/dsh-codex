@@ -8,7 +8,7 @@
 import type { ModelTurnRequest, ModelStreamChunk } from './modelkit/index.ts'
 import type { PresetConfig } from './registry.ts'
 import { loadCredential, refreshCredential } from './codex/auth.ts'
-import { CODEX_RESPONSES_URL, buildHeaders, parseQuotaHeaders } from './codex/endpoints.ts'
+import { CODEX_RESPONSES_URL, buildHeaders } from './codex/endpoints.ts'
 import { buildResponsesBody } from './codex/request.ts'
 import { parseResponsesStream, CodexStreamError } from './codex/stream.ts'
 import { loadCatalog } from './codex/catalog.ts'
@@ -169,8 +169,7 @@ async function* streamCodex(
   // 5. Update quota from response headers
   const responseHeaders: Record<string, string> = {}
   res.headers.forEach((value, key) => { responseHeaders[key] = value })
-  const quota = parseQuotaHeaders(responseHeaders)
-  if (quota !== undefined) updateQuota(quota)
+  updateQuota(responseHeaders)
 
   // 6. Parse stream and yield chunks
   const bodyStream = res.body

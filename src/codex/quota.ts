@@ -5,6 +5,7 @@
  */
 
 import type { CodexQuota } from './endpoints.ts'
+import { parseQuotaHeaders } from './endpoints.ts'
 
 /** 模块级配额缓存。 */
 let cachedQuota: CodexQuota | undefined
@@ -15,11 +16,14 @@ const CACHE_TTL_MS = 30_000
 
 /**
  * 更新配额缓存（每次推理响应后调用）。
- * 接受已解析的 CodexQuota 对象。
+ * 接受原始响应头，内部解析 x-codex-* 字段。
  */
-export function updateQuota(quota: CodexQuota): void {
-  cachedQuota = quota
-  cachedAt = Date.now()
+export function updateQuota(headers: Record<string, string>): void {
+  const quota = parseQuotaHeaders(headers)
+  if (quota !== undefined) {
+    cachedQuota = quota
+    cachedAt = Date.now()
+  }
 }
 
 /**
@@ -30,9 +34,6 @@ export function getQuota(): CodexQuota | undefined {
   if (Date.now() - cachedAt > CACHE_TTL_MS) return undefined
   return cachedQuota
 }
-
-// Import here to avoid circular dependency issues at module level
-import { parseQuotaHeaders } from './endpoints.ts'
 
 /**
  * 注册配额路由。
