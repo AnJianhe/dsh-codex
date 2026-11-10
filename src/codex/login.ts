@@ -81,7 +81,13 @@ export async function startCodexLogin(options?: {
 
   await new Promise<void>((resolve, reject) => {
     server.listen(CALLBACK_PORT, '127.0.0.1', () => resolve())
-    server.on('error', reject)
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        reject(new Error(`本地回调端口 ${CALLBACK_PORT} 已被占用，请关闭占用该端口的进程后重试`))
+      } else {
+        reject(err)
+      }
+    })
   })
 
   activeSession = {

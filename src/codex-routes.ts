@@ -54,22 +54,15 @@ export function registerCodexRoutes(ctx: {
       method: 'POST',
       handler: async () => {
         try {
-          const { url, waitUntilDone } = await startCodexLogin({
+          const { url } = await startCodexLogin({
             openUrl: (u: string) => {
-              // Use child_process to open browser on macOS
-              try {
-                const { execSync } = require('node:child_process')
-                execSync(`open "${u}"`, { stdio: 'ignore' })
-              } catch {
+              import('node:child_process').then(({ exec }) => {
+                exec(`open "${u}"`)
+              }).catch(() => {
                 console.log(`[codex] 请在浏览器打开: ${u}`)
-              }
+              })
             },
           })
-          // Wait for login to complete (or timeout)
-          const timeout = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('登录超时（5 分钟）')), 300_000),
-          )
-          // Don't await here — return the URL immediately, let client poll
           return { ok: true, url }
         } catch (err) {
           return {
