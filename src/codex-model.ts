@@ -114,7 +114,7 @@ async function* streamCodex(
   if (credential === undefined) {
     yield {
       type: 'finish',
-      reason: { kind: 'error', message: '未找到 Codex 登录凭据，请在终端运行 codex login' },
+      reason: { kind: 'error', failure: { message: '未找到 Codex 登录凭据，请在终端运行 codex login', code: 'no-credential' } },
     }
     return
   }
@@ -147,7 +147,7 @@ async function* streamCodex(
     } catch {
       yield {
         type: 'finish',
-        reason: { kind: 'error', message: 'Codex 登录已过期，请重新登录' },
+        reason: { kind: 'error', failure: { message: 'Codex 登录已过期，请重新登录', code: 'auth-expired' } },
       }
       return
     }
@@ -160,7 +160,7 @@ async function* streamCodex(
     if (res.status === 401) {
       yield {
         type: 'finish',
-        reason: { kind: 'error', message: 'Codex 登录已过期，请重新登录' },
+        reason: { kind: 'error', failure: { message: 'Codex 登录已过期，请重新登录', code: 'auth-expired' } },
       }
       return
     }
@@ -169,7 +169,7 @@ async function* streamCodex(
   if (!res.ok) {
     yield {
       type: 'finish',
-      reason: { kind: 'error', message: `Codex 请求失败 (${res.status})` },
+      reason: { kind: 'error', failure: { message: `Codex 请求失败 (${res.status})`, code: 'http-error' } },
     }
     return
   }
@@ -184,7 +184,7 @@ async function* streamCodex(
   if (bodyStream === null) {
     yield {
       type: 'finish',
-      reason: { kind: 'error', message: 'Codex 响应没有 body' },
+      reason: { kind: 'error', failure: { message: 'Codex 响应没有 body', code: 'no-body' } },
     }
     return
   }
@@ -234,16 +234,16 @@ async function* streamCodex(
           return
         }
         case 'error': {
-          yield { type: 'finish', reason: { kind: 'error', message: event.message } }
+          yield { type: 'finish', reason: { kind: 'error', failure: { message: event.message, code: event.code } } }
           return
         }
       }
     }
   } catch (err) {
     if (err instanceof CodexStreamError) {
-      yield { type: 'finish', reason: { kind: 'error', message: err.message } }
+      yield { type: 'finish', reason: { kind: 'error', failure: { message: err.message, code: 'stream-truncated' } } }
     } else {
-      yield { type: 'finish', reason: { kind: 'error', message: 'Codex 流式响应解析失败' } }
+      yield { type: 'finish', reason: { kind: 'error', failure: { message: 'Codex 流式响应解析失败', code: 'stream-error' } } }
     }
   }
 }
