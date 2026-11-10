@@ -83,7 +83,7 @@ export function apply(ctx: unknown, config: Config): void {
 
   const adapter = modelRowAdapter({
     presetId: config.presetId,
-    displayName: 'Codex',
+    displayName: 'Codex (Direct)',
     declaredModels: config.models ?? [],
     runtimeModelsOf: (presetId: string): readonly ReportedModel[] | undefined => ledger.modelsOf(presetId),
     modelStream: codexModelStream(presets, { onRuntimeModels }),
