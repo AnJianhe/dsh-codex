@@ -1,12 +1,14 @@
 /**
- * Codex 宿主路由：会话状态与模型清单。
+ * Codex 宿主路由：会话状态、模型清单、登录。
  *
  * GET /acp-codex/session → 登录状态
  * GET/POST /acp-codex/models → 模型清单
+ * POST /acp-codex/login → 启动 OAuth 登录流程（PKCE）
  */
 
 import { loadCredential } from './codex/auth.ts'
 import { loadCatalog } from './codex/catalog.ts'
+import { startCodexLogin } from './codex/login.ts'
 
 /**
  * 注册 Codex 宿主路由。
@@ -42,6 +44,38 @@ export function registerCodexRoutes(ctx: {
             contextWindow: m.contextWindow,
             efforts: m.efforts,
           })),
+        }
+      },
+    })
+
+    // POST /acp-codex/login — 启动 OAuth 登录
+    ctx.webServer.register({
+      path: '/acp-codex/login',
+      method: 'POST',
+      handler: async () => {
+        try {
+          const { url, waitUntilDone } = await startCodexLogin({
+            openUrl: (u: string) => {
+              // Use child_process to open browser on macOS
+              try {
+                const { execSync } = require('node:child_process')
+                execSync(`open "${u}"`, { stdio: 'ignore' })
+              } catch {
+                console.log(`[codex] 请在浏览器打开: ${u}`)
+              }
+            },
+          })
+          // Wait for login to complete (or timeout)
+          const timeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('登录超时（5 分钟）')), 300_000),
+          )
+          // Don't await here — return the URL immediately, let client poll
+          return { ok: true, url }
+        } catch (err) {
+          return {
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          }
         }
       },
     })

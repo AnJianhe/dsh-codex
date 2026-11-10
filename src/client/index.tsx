@@ -58,6 +58,7 @@ const CODEX_ACCOUNT_SECTION_ORDER = 131
 /** 宿主路由路径。 */
 const CODEX_SESSION_URL = '/acp-codex/session'
 const CODEX_MODELS_URL = '/acp-codex/models'
+const CODEX_LOGIN_URL = '/acp-codex/login'
 
 type CodexAccountState = {
   readonly signedIn: boolean
@@ -68,6 +69,8 @@ type CodexAccountState = {
 function CodexAccountSection() {
   const [state, setState] = useState<CodexAccountState>({ signedIn: false })
   const [models, setModels] = useState<readonly { id: string; name: string }[]>([])
+  const [loggingIn, setLoggingIn] = useState(false)
+  const [loginUrl, setLoginUrl] = useState<string | undefined>(undefined)
 
   const refresh = useCallback(async () => {
     try {
@@ -84,13 +87,61 @@ function CodexAccountSection() {
     }
   }, [])
 
+  const login = useCallback(async () => {
+    setLoggingIn(true)
+    try {
+      const res = await fetch(CODEX_LOGIN_URL, { method: 'POST' }).then(r => r.json())
+      if (res.ok && res.url) {
+        setLoginUrl(res.url)
+        window.open(res.url, '_blank', 'noopener')
+        // Poll for login completion
+        const poll = setInterval(async () => {
+          const sessionRes = await fetch(CODEX_SESSION_URL).then(r => r.json())
+          if (sessionRes.signedIn === true) {
+            clearInterval(poll)
+            setLoggingIn(false)
+            setLoginUrl(undefined)
+            refresh()
+          }
+        }, 2000)
+        setTimeout(() => { clearInterval(poll); setLoggingIn(false) }, 300_000)
+      } else {
+        setState({ signedIn: false, reason: res.error ?? '登录启动失败' })
+        setLoggingIn(false)
+      }
+    } catch (err) {
+      setState({ signedIn: false, reason: err instanceof Error ? err.message : String(err) })
+      setLoggingIn(false)
+    }
+  }, [refresh])
+
   useEffect(() => { refresh() }, [refresh])
 
   return (
     <div data-codex-account="root" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
       <div data-codex-account="status">
-        {state.signedIn ? '已登录 Codex' : '未登录 Codex：请在终端运行 codex login'}
+        {state.signedIn
+          ? '已登录 Codex'
+          : state.reason ?? '未登录 Codex'}
       </div>
+      {!state.signedIn && (
+        <div data-codex-account="actions">
+          <button
+            type="button"
+            data-codex-login="btn"
+            disabled={loggingIn}
+            onClick={login}
+            style={{ padding: '6px 16px', borderRadius: '6px', cursor: 'pointer' }}
+          >
+            {loggingIn ? '等待浏览器授权…' : '登录 Codex'}
+          </button>
+          {loginUrl && (
+            <a href={loginUrl} target="_blank" rel="noopener" style={{ marginLeft: '8px', fontSize: '12px' }}>
+              如果浏览器没有自动打开，点这里
+            </a>
+          )}
+        </div>
+      )}
       <div data-codex-account="models">
         可用模型 {models.length} 个
         <ul style={{ margin: 0, paddingLeft: '18px' }}>
