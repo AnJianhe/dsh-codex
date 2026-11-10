@@ -10,7 +10,7 @@ describe('client wiring', () => {
   })
 
   it('client index exports name and apply', () => {
-    const content = readFileSync(fileURLToPath(new URL('../src/client/index.ts', import.meta.url)), 'utf8')
+    const content = readFileSync(fileURLToPath(new URL('../src/client/index.tsx', import.meta.url)), 'utf8')
     expect(content).toContain('export const name')
     expect(content).toContain('export function apply')
   })

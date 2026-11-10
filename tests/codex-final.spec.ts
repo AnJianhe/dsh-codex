@@ -9,7 +9,7 @@ describe('final wiring', () => {
       'src/codex/auth.ts', 'src/codex/endpoints.ts', 'src/codex/catalog.ts',
       'src/codex/request.ts', 'src/codex/stream.ts', 'src/codex/quota.ts',
       'src/modelkit/types.ts', 'src/modelkit/index.ts',
-      'src/client/index.ts', 'cordis.patch.yml',
+      'src/client/index.tsx', 'cordis.patch.yml',
     ]
     for (const f of files) {
       readFileSync(fileURLToPath(new URL(`../${f}`, import.meta.url)))
