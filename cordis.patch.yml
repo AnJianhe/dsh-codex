@@ -1,0 +1,30 @@
+# @goodjin2/dsh-codex 的挂载配置。
+#
+# Codex 模型行：DSH 自己的循环读文件、跑命令、审批，这一行只回答「向模型要下一句话」。
+# 请求由本仓直接发到 OpenAI 的 /responses 端点，用本地 Codex CLI 的 OAuth 凭据认证。
+#
+# 用法：把下面的 insert 段合并进你的 profile 的 cordis.patch.yml。
+
+- insert:
+    # Codex 模型行：把 `acp:acp-codex-global` 这条 provider 路由挂进宿主模型目录。
+    - id: acp-codex-global
+      name: '@goodjin2/dsh-codex'
+      config:
+        presetId: acp-codex-global
+        agent: codex-global
+        hideFromRoster: true
+        collapseEfforts: true
+        efforts:
+          - id: low
+            name: Low
+          - id: medium
+            name: Medium
+          - id: high
+            name: High
+          - id: xhigh
+            name: xHigh
+          - id: max
+            name: Max
+          - id: ultra
+            name: Ultra
+        models: []

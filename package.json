@@ -1,0 +1,116 @@
+{
+  "name": "@goodjin2/dsh-codex",
+  "version": "0.1.0",
+  "description": "DSH plugin: Codex 模型行（直接 HTTP 调用 /responses 端点，复用本地 Codex CLI OAuth 凭据）",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/goodjin/dsh-codex.git"
+  },
+  "homepage": "https://github.com/goodjin/dsh-codex#readme",
+  "bugs": {
+    "url": "https://github.com/goodjin/dsh-codex/issues"
+  },
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "main": "./src/entry.ts",
+  "types": "./src/entry.ts",
+  "exports": {
+    ".": {
+      "types": "./src/entry.ts",
+      "default": "./src/entry.ts"
+    },
+    "./client": {
+      "types": "./src/client/index.ts",
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "README.zh.md",
+    "cordis.patch.yml",
+    "lib/client.js",
+    "lib/client.js.map",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tsdown.config.ts"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc --noEmit",
+    "build:client": "tsc -p tsconfig.json && tsdown"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "plugin",
+    "codex",
+    "model"
+  ],
+  "author": "goodjin",
+  "license": "MIT",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-model-selection",
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web"
+    }
+  },
+  "dependencies": {
+    "proper-lockfile": "^4.1.2"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-client-ui-chat": ">=0.2.0-rc.2 <0.3",
+    "@deepseek-ai/dsh-client-ui-conversation": ">=0.2.0-rc.2 <0.3",
+    "@deepseek-ai/dsh-client-ui-layout": ">=0.2.0-rc.2 <0.3",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.0-rc.2 <0.3",
+    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.0-rc.2 <0.3",
+    "@deepseek-ai/dsh-client-ui-sidebar": ">=0.2.0-rc.2 <0.3",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.0-rc.2 <0.3",
+    "@deepseek-ai/schemastery": ">=3.18.1 <4",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-client-ui-chat": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-layout": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-model-selection": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.0-rc.2",
+    "@deepseek-ai/schemastery": "^3.18.1",
+    "@types/node": "^24.0.0",
+    "@types/proper-lockfile": "^4.1.4",
+    "@types/react": "^18.2.0",
+    "lightningcss": "^1.30.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tsdown": "^0.15.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
