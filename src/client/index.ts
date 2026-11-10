@@ -12,6 +12,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { SlotCore, SlotMap } from '@deepseek-ai/dsh-client-ui-slots'
 
+import { createElement, useEffect, useState } from 'react'
+
 import { registerClientLocales, NAMESPACE } from './locales.ts'
 
 export const name = '@goodjin2/dsh-codex'
@@ -58,6 +60,39 @@ function registerCodexAccountSection(ctx: CodexClientContext, log: Log): void {
   }
 }
 
+/** 设置段在 settings.section 座位上的 id。 */
+const SECTION_ID = 'codex-account'
+
+/** 账号设置段：登录状态 + 模型清单。数据来自宿主路由（/acp-codex/*）。 */
+function CodexAccountSection(): ReturnType<typeof createElement> {
+  const [signedIn, setSignedIn] = useState<boolean | undefined>(undefined)
+  const [models, setModels] = useState<{ id: string; name: string }[]>([])
+  const [error, setError] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const session = await fetch('/acp-codex/session').then(r => r.json()) as { signedIn?: boolean }
+        if (!cancelled) setSignedIn(session.signedIn === true)
+        const catalog = await fetch('/acp-codex/models').then(r => r.json()) as { models?: { id: string; name: string }[] }
+        if (!cancelled) setModels(Array.isArray(catalog.models) ? catalog.models : [])
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err))
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  if (error !== undefined) return createElement('div', null, `Codex 状态获取失败：${error}`)
+  const status = signedIn === undefined ? '查询中…' : signedIn ? '已登录 Codex' : '未登录 Codex：请在终端运行 codex login'
+  return createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } },
+    createElement('p', { style: { margin: '0' } }, status),
+    createElement('p', { style: { margin: '0' } }, `可用模型 ${models.length} 个`),
+    createElement('ul', { style: { margin: '0', paddingLeft: '18px' } },
+      models.map(m => createElement('li', { key: m.id }, `${m.name}（${m.id}）`))))
+}
+
 /**
  * Codex 浏览器侧 apply 入口。
  *
@@ -82,9 +117,21 @@ export function apply(ctx: unknown): void {
       }
     }
 
-    // Register settings section
+    // Register settings section（Codex 账号段：登录状态 + 模型清单）
     try {
-      registerCodexAccountSection(clientCtx, log)
+      const slots = propertyOf(clientCtx, 'slots')
+      const slotsInject = boundMethod(slots, 'inject')
+      const slotsRegister = boundMethod(slots, 'register')
+      if (slotsInject !== undefined && slotsRegister !== undefined) {
+        slotsInject.call(slots, () => slotsRegister.call(slots, {
+          name: 'settings.section',
+          id: SECTION_ID,
+          label: 'Codex 账号',
+          locale: NAMESPACE,
+        }, CodexAccountSection))
+      } else {
+        log('[codex-client] slots service missing; settings section not registered')
+      }
     } catch (err) {
       log(`[codex-client] settings section failed: ${err}`)
     }
