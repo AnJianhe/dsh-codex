@@ -9,7 +9,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { loadCredential } from './codex/auth.ts'
 import { loadCatalog } from './codex/catalog.ts'
-import { startCodexLogin } from './codex/login.ts'
+import { startDeviceLogin } from './codex/login.ts'
 
 export const name = 'acp-codex-routes'
 export const inject = ['webServer', 'connection']
@@ -80,7 +80,7 @@ export function apply(ctx: RouteContext): void {
       },
     })
 
-    // POST /acp-codex/login — 启动 OAuth 登录
+    // POST /acp-codex/login — 启动设备码登录
     ctx.webServer.register({
       kind: 'exact',
       path: '/acp-codex/login',
@@ -89,8 +89,8 @@ export function apply(ctx: RouteContext): void {
         if ('rejection' in admission) { res.writeHead(admission.rejection); res.end('unauthorized'); return }
         if (req.method !== 'POST') { res.writeHead(405, { Allow: 'POST' }); res.end('method not allowed'); return }
         try {
-          const { url } = await startCodexLogin()
-          send(res, { ok: true, url })
+          const { url, userCode } = await startDeviceLogin()
+          send(res, { ok: true, url, userCode })
         } catch (err) {
           send(res, { ok: false, error: err instanceof Error ? err.message : String(err) })
         }
