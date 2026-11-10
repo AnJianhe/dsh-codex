@@ -18,6 +18,7 @@ export function buildResponsesBody(input: {
   const body: Record<string, unknown> = {
     model: input.model,
     stream: true,
+    store: false,
     input: input.messages.map(m => ({
       type: 'message',
       role: m.role,
