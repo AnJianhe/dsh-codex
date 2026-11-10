@@ -28,9 +28,9 @@ describe('loadCatalog', () => {
     }))
     const result = await loadCatalog({ home })
     expect(result).toHaveLength(1)
-    expect(result[0].id).toBe('gpt-6.1-sol')
-    expect(result[0].contextWindow).toBe(500000)
-    expect(result[0].efforts).toContain('high')
+    expect(result[0]!.id).toBe('gpt-6.1-sol')
+    expect(result[0]!.contextWindow).toBe(500000)
+    expect(result[0]!.efforts).toContain('high')
   })
 
   it('returns empty array for malformed cache', async () => {

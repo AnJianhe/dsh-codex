@@ -28,7 +28,7 @@ describe('buildResponsesBody', () => {
       ],
     })
     const input = body.input as { type: string; role: string; content: { type: string; text: string }[] }[]
-    expect(input[0].content[0].type).toBe('input_text')
-    expect(input[1].content[0].type).toBe('output_text')
+    expect(input[0]!.content[0]!.type).toBe('input_text')
+    expect(input[1]!.content[0]!.type).toBe('output_text')
   })
 })

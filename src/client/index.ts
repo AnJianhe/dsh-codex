@@ -60,21 +60,36 @@ function registerCodexAccountSection(ctx: CodexClientContext, log: Log): void {
 
 /**
  * Codex 浏览器侧 apply 入口。
+ *
+ * 全体防御化（2026-11-10 现场）：行激活失败会让 web boot 报
+ * 「entry did not activate」。渲染器里没有 process.stderr（原 log 实现一执行
+ * 就 TypeError），guarded facade 上的服务属性访问也可能抛——任何一处都不能
+ * 穿透 apply，否则整行 failed。降级语义：设置段不出现，但行激活成功。
  */
 export function apply(ctx: unknown): void {
-  const log: Log = (msg: string) => process.stderr.write(`${msg}\n`)
-  const clientCtx = ctx as CodexClientContext
+  // 渲染器没有 process.stderr；console.error 在沙箱渲染器里始终存在。
+  const log: Log = (msg: string) => { try { console.error(msg) } catch { /* ignore */ } }
+  try {
+    const clientCtx = ctx as CodexClientContext
 
-  // Register locales
-  const localeRegister = boundMethod(clientCtx.locale, 'register')
-  if (localeRegister !== undefined) {
-    try {
-      registerClientLocales(localeRegister.bind(clientCtx.locale) as (dictionaries: { zh: Record<string, string>; en: Record<string, string> }) => void)
-    } catch (err) {
-      log(`[codex-client] locale register failed: ${err}`)
+    // Register locales
+    const localeRegister = boundMethod(propertyOf(clientCtx, 'locale'), 'register')
+    if (localeRegister !== undefined) {
+      try {
+        registerClientLocales(localeRegister.bind(propertyOf(clientCtx, 'locale')) as (dictionaries: { zh: Record<string, string>; en: Record<string, string> }) => void)
+      } catch (err) {
+        log(`[codex-client] locale register failed: ${err}`)
+      }
     }
-  }
 
-  // Register settings section
-  registerCodexAccountSection(clientCtx, log)
+    // Register settings section
+    try {
+      registerCodexAccountSection(clientCtx, log)
+    } catch (err) {
+      log(`[codex-client] settings section failed: ${err}`)
+    }
+  } catch (err) {
+    // 最后一道：任何穿透都只降级，不让 fiber 把整行标记成 failed。
+    try { console.error(`[codex-client] activation degraded: ${err}`) } catch { /* ignore */ }
+  }
 }

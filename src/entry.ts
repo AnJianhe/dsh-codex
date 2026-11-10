@@ -111,7 +111,14 @@ function registryOf(ctx: unknown): RegistryLike | undefined {
   const getter = ctx as { get?: unknown }
   let llm: unknown
   if (typeof getter.get === 'function') {
-    llm = (getter.get as (key: string) => unknown).call(ctx, 'llm')
+    // 宿主 cordis 语义：读未在 inject 里声明的服务会当场抛错（2026-11-10 现场：
+    // 这条抛错穿透 apply，整行激活失败）。llm 缺席是预期内的优雅降级
+    // （行注册但选择器不可见），所以两条访问路径都要接住。
+    try {
+      llm = (getter.get as (key: string) => unknown).call(ctx, 'llm')
+    } catch {
+      return undefined
+    }
   } else {
     try {
       llm = (ctx as { llm?: unknown }).llm
