@@ -9,7 +9,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { loadCredential } from './codex/auth.ts'
 import { loadCatalog } from './codex/catalog.ts'
-import { startDeviceLogin } from './codex/login.ts'
+import { startCodexLogin } from './codex/login.ts'
 
 export const name = 'acp-codex-routes'
 export const inject = ['webServer', 'connection']
@@ -80,18 +80,22 @@ export function apply(ctx: RouteContext): void {
       },
     })
 
-    // POST /acp-codex/login — 启动设备码登录
+    // POST /acp-codex/login — 启动 OAuth 登录
     ctx.webServer.register({
       kind: 'exact',
       path: '/acp-codex/login',
       async handler(req, res) {
+        console.error('[codex-routes] login handler called', req.method)
         const admission = ctx.connection.admit(req)
         if ('rejection' in admission) { res.writeHead(admission.rejection); res.end('unauthorized'); return }
         if (req.method !== 'POST') { res.writeHead(405, { Allow: 'POST' }); res.end('method not allowed'); return }
         try {
-          const { url, userCode } = await startDeviceLogin()
-          send(res, { ok: true, url, userCode })
+          console.error('[codex-routes] calling startCodexLogin')
+          const { url } = await startCodexLogin()
+          console.error('[codex-routes] success')
+          send(res, { ok: true, url })
         } catch (err) {
+          console.error('[codex-routes] error:', err instanceof Error ? err.message : String(err))
           send(res, { ok: false, error: err instanceof Error ? err.message : String(err) })
         }
       },
