@@ -26,6 +26,14 @@
       "types": "./src/client/index.ts",
       "default": "./lib/client.js"
     },
+    "./codex-quota": {
+      "types": "./src/codex/quota.ts",
+      "default": "./src/codex/quota.ts"
+    },
+    "./codex-routes": {
+      "types": "./src/codex-routes.ts",
+      "default": "./src/codex-routes.ts"
+    },
     "./package.json": "./package.json"
   },
   "files": [
