@@ -75,10 +75,45 @@ export function buildResponsesBody(input: {
   if (input.tools !== undefined && input.tools.length > 0) {
     body.tools = input.tools
       .filter(t => t != null)
-      .map(t => ({ type: 'function', name: t.name, description: t.description, parameters: t.parameters }))
+      .map(t => {
+        const params = normalizeSchema(t.parameters)
+        return { type: 'function', name: t.name, description: t.description, parameters: params }
+      })
   }
   if (input.maxTokens !== undefined) {
     body.max_output_tokens = input.maxTokens
   }
   return body
+}
+
+/**
+ * Normalize a JSON Schema to meet Codex API requirements:
+ * - Top level must have type: "object"
+ * - No oneOf/anyOf/allOf/enum/const/not at top level
+ */
+function normalizeSchema(schema: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (schema === undefined || schema === null) {
+    return { type: 'object', properties: {} }
+  }
+  // Already valid
+  if (schema['type'] === 'object' && !schema['oneOf'] && !schema['anyOf'] && !schema['allOf'] && !schema['enum'] && !schema['const'] && !schema['not']) {
+    return schema
+  }
+  // Has oneOf/anyOf at top level — wrap it
+  if (schema['oneOf'] || schema['anyOf'] || schema['allOf']) {
+    return { type: 'object', properties: {}, anyOf: schema['oneOf'] ?? schema['anyOf'] ?? schema['allOf'] }
+  }
+  // Has enum at top level — wrap in properties
+  if (schema['enum']) {
+    return { type: 'object', properties: { value: { enum: schema['enum'] } }, required: ['value'] }
+  }
+  // Has const at top level
+  if (schema['const'] !== undefined) {
+    return { type: 'object', properties: { value: { const: schema['const'] } }, required: ['value'] }
+  }
+  // No type — assume object
+  if (!schema['type']) {
+    return { type: 'object', ...schema }
+  }
+  return schema
 }
