@@ -19,14 +19,16 @@ export function buildResponsesBody(input: {
     model: input.model,
     stream: true,
     store: false,
-    input: input.messages.map(m => ({
-      type: 'message',
-      role: m.role,
-      content: [{
-        type: m.role === 'assistant' ? 'output_text' : 'input_text',
-        text: m.content,
-      }],
-    })),
+    input: input.messages
+      .filter(m => m.role !== 'system')
+      .map(m => ({
+        type: 'message',
+        role: m.role,
+        content: [{
+          type: m.role === 'assistant' ? 'output_text' : 'input_text',
+          text: m.content,
+        }],
+      })),
   }
   if (input.system !== undefined) {
     body.instructions = input.system
