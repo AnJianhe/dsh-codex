@@ -121,8 +121,10 @@ async function* streamCodex(
 
   // 2. Build request body
   const messages = (request.messages ?? []) as { role: string; content: string }[]
+  // Strip [effort] suffix if present (collapseEfforts folds base[effort] → base)
+  const modelId = request.model.replace(/\[.+\]$/, '')
   const body = buildResponsesBody({
-    model: request.model,
+    model: modelId,
     messages,
     system: typeof request.system === 'string' ? request.system : undefined,
     tools: request.tools,
