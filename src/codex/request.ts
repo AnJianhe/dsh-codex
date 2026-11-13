@@ -22,7 +22,29 @@ export function buildResponsesBody(input: {
     input: input.messages
       .filter(m => m.role !== 'system')
       .map(m => {
-        // Content can be a plain string or an array of content parts
+        // Tool result messages → function_call_output items
+        if (m.role === 'tool') {
+          const raw = m as Record<string, unknown>
+          const toolCallId = raw['tool_call_id']
+          const output = typeof m.content === 'string'
+            ? m.content
+            : Array.isArray(m.content)
+              ? (m.content as unknown[]).map(p => {
+                  if (typeof p === 'string') return p
+                  if (typeof p === 'object' && p !== null) {
+                    const pp = p as Record<string, unknown>
+                    if (typeof pp['text'] === 'string') return pp['text']
+                  }
+                  return ''
+                }).join('')
+              : String(m.content ?? '')
+          return [{
+            type: 'function_call_output' as const,
+            call_id: typeof toolCallId === 'string' ? toolCallId : '',
+            output,
+          }]
+        }
+        // Regular messages
         let text: string
         if (typeof m.content === 'string') {
           text = m.content
@@ -31,14 +53,11 @@ export function buildResponsesBody(input: {
             if (typeof part === 'string') return part
             if (typeof part === 'object' && part !== null) {
               const p = part as Record<string, unknown>
-              // Handle { type: 'text', text: '...' } and { type: 'input_text', text: '...' }
               const textVal = p['text']
               if (typeof textVal === 'string') return textVal
-              // text might be an array itself
               if (Array.isArray(textVal)) {
                 return (textVal as unknown[]).map(t => typeof t === 'string' ? t : '').join('')
               }
-              // Handle nested content arrays
               if (Array.isArray(p['content'])) {
                 return (p['content'] as unknown[]).map(c => {
                   if (typeof c === 'string') return c
@@ -48,23 +67,22 @@ export function buildResponsesBody(input: {
                   return ''
                 }).join('')
               }
-              // Debug: log unexpected format
-              console.error('[codex-request] unexpected content part:', JSON.stringify(p).slice(0, 200))
             }
             return ''
           }).join('')
         } else {
           text = String(m.content ?? '')
         }
-        return {
-          type: 'message',
+        return [{
+          type: 'message' as const,
           role: m.role,
           content: [{
-            type: m.role === 'assistant' ? 'output_text' : 'input_text',
+            type: m.role === 'assistant' ? 'output_text' as const : 'input_text' as const,
             text,
           }],
-        }
-      }),
+        }]
+      })
+      .flat(),
   }
   if (input.system !== undefined) {
     body.instructions = input.system
