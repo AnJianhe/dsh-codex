@@ -54,6 +54,6 @@ export type ModelStreamChunk =
   | { readonly type: 'text-delta'; readonly index: number; readonly text: string }
   | { readonly type: 'reasoning-delta'; readonly index: number; readonly text: string }
   | { readonly type: 'tool-call-delta'; readonly index: number; readonly id: string; readonly name?: string; readonly argumentsDelta: string }
-  | { readonly type: 'block-end'; readonly index: number; readonly block: { readonly type: string; readonly [key: string]: unknown } }
+  | { readonly type: 'block-end'; readonly index: number; readonly block: ({ readonly type: 'text' | 'reasoning'; readonly text: string } | { readonly type: 'tool-call'; readonly id: string; readonly name: string; readonly arguments: string }) }
   | { readonly type: 'usage'; readonly usage: { readonly inputTokens: number; readonly outputTokens: number; readonly totalTokens?: number } }
   | { readonly type: 'finish'; readonly reason: { readonly kind: string; readonly [key: string]: unknown } }

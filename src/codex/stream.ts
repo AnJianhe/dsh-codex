@@ -74,8 +74,9 @@ export async function* parseResponsesStream(
           const itemId = (item.item_id as string) ?? (item.id as string) ?? ''
           const name = (item.name as string) ?? ''
           const buffered = toolArgs.get(itemId)
-          const args = buffered?.args ?? (item.arguments as string) ?? ''
-          yield { type: 'tool_call', id: itemId, name, arguments: args }
+          const args = (item.arguments as string) ?? buffered?.args ?? ''
+          const callId = (item.call_id as string) ?? itemId
+          yield { type: 'tool_call', id: callId, name, arguments: args }
           toolArgs.delete(itemId)
         }
       } else if (type === 'response.completed') {

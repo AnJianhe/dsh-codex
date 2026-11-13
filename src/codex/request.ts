@@ -9,7 +9,7 @@
  */
 export function buildResponsesBody(input: {
   model: string
-  messages: readonly { role: string; content: unknown }[]
+  messages: readonly { role: string; content: unknown; toolCallId?: string; tool_call_id?: string }[]
   system?: string
   tools?: readonly { name: string; description?: string; parameters?: Record<string, unknown> }[]
   reasoningEffort?: string
@@ -25,7 +25,7 @@ export function buildResponsesBody(input: {
         // Tool result messages → function_call_output items
         if (m.role === 'tool') {
           const raw = m as Record<string, unknown>
-          const toolCallId = raw['tool_call_id']
+          const toolCallId = raw['toolCallId'] ?? raw['tool_call_id']
           const output = typeof m.content === 'string'
             ? m.content
             : Array.isArray(m.content)
@@ -43,6 +43,18 @@ export function buildResponsesBody(input: {
             call_id: typeof toolCallId === 'string' ? toolCallId : '',
             output,
           }]
+        }
+        // Preserve assistant tool calls for stateless Responses replay.
+        if (m.role === 'assistant' && Array.isArray(m.content) && m.content.some(p => p?.type === 'tool-call')) {
+          return m.content.flatMap((part): Record<string, unknown>[] => {
+            if (part?.type === 'tool-call') {
+              return [{ type: 'function_call', call_id: part.id, name: part.name, arguments: part.arguments }]
+            }
+            if (part?.type === 'text') {
+              return [{ type: 'message', role: 'assistant', content: [{ type: 'output_text', text: part.text }] }]
+            }
+            return []
+          })
         }
         // Regular messages
         let text: string
