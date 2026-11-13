@@ -24,7 +24,7 @@ export type CatalogModel = {
    * 这个模型提供的推理强度档，存在才带。宿主的选择器只在有这一项时把「强度」当
    * 独立的轴渲染（而不是每个强度一行）；缺席就是不给强度轴。
    */
-  readonly reasoning?: { readonly efforts: readonly CatalogEffort[] }
+  readonly reasoning?: { readonly efforts: readonly CatalogEffort[]; readonly defaultEffort?: string }
   /** 宿主压缩（dsh-compaction-basic）经 resolveModel 要的窗口；缺席即「未声明」。 */
   readonly context?: { readonly contextWindow: number }
 }

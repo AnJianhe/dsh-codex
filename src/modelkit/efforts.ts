@@ -147,7 +147,7 @@ export function collapsedToCatalog(
     id: model.baseId,
     name: model.displayName,
     ...(model.description === undefined ? {} : { description: model.description }),
-    ...(efforts === undefined ? {} : { reasoning: { efforts } }),
+    ...(efforts === undefined ? {} : { reasoning: { efforts, defaultEffort: efforts[0]!.id } }),
     ...(model.contextWindow === undefined ? {} : { context: { contextWindow: model.contextWindow } }),
   }
 }
