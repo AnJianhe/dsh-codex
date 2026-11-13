@@ -116,6 +116,7 @@ export function modelRowAdapter(options: ModelRowAdapterOptions): ModelRowAdapte
     prepareCall: async (provider: string, model: string) => ({
       model: await adapter.resolveModel(provider, model),
       stream: (options: ModelTurnRequest) => adapter.stream(options),
+      adapterDefaults: { reasoningEffort: true },
     }),
 
     // 模型行作为模型应答：请求就在这里跑，工具调用也一并回到问它的循环。宿主把一次
