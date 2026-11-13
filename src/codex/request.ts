@@ -9,7 +9,7 @@
  */
 export function buildResponsesBody(input: {
   model: string
-  messages: readonly { role: string; content: string }[]
+  messages: readonly { role: string; content: unknown }[]
   system?: string
   tools?: readonly { name: string; description?: string; parameters?: Record<string, unknown> }[]
   reasoningEffort?: string
@@ -21,14 +21,28 @@ export function buildResponsesBody(input: {
     store: false,
     input: input.messages
       .filter(m => m.role !== 'system')
-      .map(m => ({
-        type: 'message',
-        role: m.role,
-        content: [{
-          type: m.role === 'assistant' ? 'output_text' : 'input_text',
-          text: m.content,
-        }],
-      })),
+      .map(m => {
+        // Content can be a plain string or an array of content parts
+        const text = typeof m.content === 'string'
+          ? m.content
+          : Array.isArray(m.content)
+            ? (m.content as unknown[]).map(part => {
+                if (typeof part === 'string') return part
+                if (typeof part === 'object' && part !== null && 'text' in part) {
+                  return String((part as Record<string, unknown>)['text'] ?? '')
+                }
+                return ''
+              }).join('')
+            : String(m.content ?? '')
+        return {
+          type: 'message',
+          role: m.role,
+          content: [{
+            type: m.role === 'assistant' ? 'output_text' : 'input_text',
+            text,
+          }],
+        }
+      }),
   }
   if (input.system !== undefined) {
     body.instructions = input.system
