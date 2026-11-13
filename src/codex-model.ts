@@ -168,9 +168,11 @@ async function* streamCodex(
   }
 
   if (!res.ok) {
+    const errBody = await res.text().catch(() => '')
+    console.error('[codex] request failed', res.status, request.model, errBody.slice(0, 200))
     yield {
       type: 'finish',
-      reason: { kind: 'error', failure: { message: `Codex 请求失败 (${res.status})`, code: 'http-error' } },
+      reason: { kind: 'error', failure: { message: `Codex 请求失败 (${res.status}): ${errBody.slice(0, 100)}`, code: 'http-error' } },
     }
     return
   }
