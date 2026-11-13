@@ -94,8 +94,10 @@ export function buildResponsesBody(input: {
     body.tools = input.tools
       .filter(t => t != null)
       .map(t => {
-        const params = normalizeSchema(t.parameters)
-        return { type: 'function', name: t.name, description: t.description, parameters: params }
+        const params = normalizeSchema(t.parameters, t.name)
+        // DSH tools include optional fields and open objects. Responses otherwise
+        // attempts strict normalization, which changes/rejects these schemas.
+        return { type: 'function', name: t.name, description: t.description, parameters: params, strict: false }
       })
   }
   if (input.maxTokens !== undefined) {
@@ -109,29 +111,18 @@ export function buildResponsesBody(input: {
  * - Top level must have type: "object"
  * - No oneOf/anyOf/allOf/enum/const/not at top level
  */
-function normalizeSchema(schema: Record<string, unknown> | undefined): Record<string, unknown> {
+function normalizeSchema(schema: Record<string, unknown> | undefined, toolName: string): Record<string, unknown> {
   if (schema === undefined || schema === null) {
     return { type: 'object', properties: {} }
   }
-  // Already valid
-  if (schema['type'] === 'object' && !schema['oneOf'] && !schema['anyOf'] && !schema['allOf'] && !schema['enum'] && !schema['const'] && !schema['not']) {
-    return schema
+  // Never wrap arguments in a synthetic `value` field or replace allOf/oneOf
+  // with anyOf: the host executes the original tool contract, not that wrapper.
+  const forbidden = ['oneOf', 'anyOf', 'allOf', 'enum', 'const', 'not']
+  const keyword = forbidden.find(key => Object.hasOwn(schema, key))
+  if (keyword !== undefined || (schema.type !== undefined && schema.type !== 'object')) {
+    throw Object.assign(new Error(
+      `Codex tool "${toolName}" requires an object parameter schema without top-level ${keyword ?? `type ${JSON.stringify(schema.type)}`}`,
+    ), { code: 'unsupported-tool-schema' })
   }
-  // Has oneOf/anyOf at top level — wrap it
-  if (schema['oneOf'] || schema['anyOf'] || schema['allOf']) {
-    return { type: 'object', properties: {}, anyOf: schema['oneOf'] ?? schema['anyOf'] ?? schema['allOf'] }
-  }
-  // Has enum at top level — wrap in properties
-  if (schema['enum']) {
-    return { type: 'object', properties: { value: { enum: schema['enum'] } }, required: ['value'] }
-  }
-  // Has const at top level
-  if (schema['const'] !== undefined) {
-    return { type: 'object', properties: { value: { const: schema['const'] } }, required: ['value'] }
-  }
-  // No type — assume object
-  if (!schema['type']) {
-    return { type: 'object', ...schema }
-  }
-  return schema
+  return { ...schema, type: 'object' }
 }
