@@ -16,6 +16,7 @@ import { codexModelStream } from './codex-model.ts'
 import type { PresetConfig } from './registry.ts'
 
 export const name = '@goodjin2/dsh-codex'
+export const inject = ['llm']
 
 /** 一个模型在目录/选择器里怎么显示。 */
 const Model = Schema.object({

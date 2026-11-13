@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { apply, inject } from '../src/entry.ts'
 
 describe('wiring', () => {
   it('cordis.patch.yml has acp-codex-global row', () => {
@@ -27,4 +28,14 @@ describe('wiring', () => {
     expect(content).toContain('modelRowAdapter')
     expect(content).toContain('providerRoute')
   })
+})
+
+it('registers its model row under the host declared-service guard', () => {
+  const providers: string[] = []
+  const ctx = { get(key: string) {
+    if (!inject.includes(key)) throw new Error(`undeclared service: ${key}`)
+    return { registerAdapter(routes: string[]) { providers.push(...routes) } }
+  } }
+  apply(ctx, { presetId: 'codex-wiring-test', agent: 'test' })
+  expect(providers).toEqual(['acp:codex-wiring-test'])
 })
