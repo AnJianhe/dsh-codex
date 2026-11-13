@@ -37,7 +37,7 @@ export function buildResponsesBody(input: {
     body.reasoning = { effort: input.reasoningEffort, summary: 'auto' }
   }
   if (input.tools !== undefined && input.tools.length > 0) {
-    body.tools = input.tools
+    body.tools = input.tools.filter(t => t != null)
   }
   if (input.maxTokens !== undefined) {
     body.max_output_tokens = input.maxTokens
