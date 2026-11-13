@@ -80,6 +80,7 @@ export function modelRowAdapter(options: ModelRowAdapterOptions): ModelRowAdapte
           displayName: model.name,
           ...(model.description === undefined ? {} : { description: model.description }),
           efforts: undefined,
+          ...(model.contextWindow === undefined ? {} : { contextWindow: model.contextWindow }),
         }, declaredEfforts))
       }
       return collapseEffortModels(models).map(model => collapsedToCatalog(provider, model, declaredEfforts))
@@ -90,25 +91,12 @@ export function modelRowAdapter(options: ModelRowAdapterOptions): ModelRowAdapte
     // 丢掉。未声明的 id 拿到的是运行时的默认答案（身份元数据），而不是抛错。
     resolveModel: async (provider: string, model: string): Promise<CatalogModel> => {
       const presetId = presetOfRoute(provider)
-      const declared = presetId === undefined
-        ? undefined
-        : modelsFor(presetId).find(candidate => candidate.id === model)
-      if (declared !== undefined) {
-        return {
-          provider,
-          id: declared.id,
-          name: declared.name,
-          ...(declared.description === undefined ? {} : { description: declared.description }),
-          ...(declared.contextWindow === undefined ? {} : { context: { contextWindow: declared.contextWindow } }),
-        }
-      }
-      // 这个 id 可能是被折叠的 base（选择器选 base、强度单独走），也可能是老会话带着的
-      // 裸 id。按折叠后的清单解析，让元数据与强度跟选择器宣告的一致。
-      const collapsed = presetId === undefined
-        ? undefined
-        : collapseEffortModels(modelsFor(presetId)).find(entry => entry.baseId === model)
-      if (collapsed === undefined) return { provider, id: model, name: model }
-      return collapsedToCatalog(provider, collapsed, deps.efforts)
+      if (presetId === undefined) return { provider, id: model, name: model }
+      // Resolve the exact same capabilities advertised by the picker, including
+      // bare model IDs. Never silently drop reasoning or context metadata.
+      const catalog = await adapter.listModels(provider)
+      const found = catalog.find(candidate => candidate.id === model)
+      return found ?? { provider, id: model, name: model }
     },
 
     // 原生循环每步都先过 llm.prepareCall() 才放行请求；运行时把这个无条件转给适配器。

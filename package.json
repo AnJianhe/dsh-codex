@@ -23,8 +23,16 @@
       "default": "./src/entry.ts"
     },
     "./client": {
-      "types": "./src/client/index.ts",
+      "types": "./src/client/index.tsx",
       "default": "./lib/client.js"
+    },
+    "./codex-quota": {
+      "types": "./src/codex/quota.ts",
+      "default": "./src/codex/quota.ts"
+    },
+    "./codex-routes": {
+      "types": "./src/codex-routes.ts",
+      "default": "./src/codex-routes.ts"
     },
     "./package.json": "./package.json"
   },
@@ -43,7 +51,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "tsc --noEmit",
-    "build:client": "tsc -p tsconfig.json && tsdown"
+    "build:client": "tsc -p tsconfig.json && tsdown",
+    "prepare": "npm run build:client"
   },
   "keywords": [
     "deepseek-harness",
@@ -112,5 +121,6 @@
     "tsdown": "^0.15.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
-  }
+  },
+  "private": true
 }

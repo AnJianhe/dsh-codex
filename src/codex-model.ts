@@ -121,6 +121,7 @@ async function* streamCodex(
 
   // 2. Build request body
   const messages = (request.messages ?? []) as { role: string; content: string }[]
+  // Strip [effort] suffix if present (collapseEfforts folds base[effort] → base)
   const body = buildResponsesBody({
     model: request.model,
     messages,
@@ -167,9 +168,11 @@ async function* streamCodex(
   }
 
   if (!res.ok) {
+    const errBody = await res.text().catch(() => '')
+    console.error('[codex] request failed', res.status, request.model, errBody.slice(0, 200))
     yield {
       type: 'finish',
-      reason: { kind: 'error', failure: { message: `Codex 请求失败 (${res.status})`, code: 'http-error' } },
+      reason: { kind: 'error', failure: { message: `Codex 请求失败 (${res.status}): ${errBody.slice(0, 100)}`, code: 'http-error' } },
     }
     return
   }
@@ -191,9 +194,14 @@ async function* streamCodex(
 
   // Convert ReadableStream to AsyncIterable<string | Uint8Array>
   const reader = bodyStream.getReader()
-  let textIndex = -1
-  let reasoningIndex = -1
-  let toolIndex = -1
+  let nextIndex = 0
+  let sawToolCall = false
+  let active: { index: number; type: 'text' | 'reasoning'; text: string } | undefined
+  function* closeBlock(): Generator<ModelStreamChunk> {
+    if (active === undefined) return
+    yield { type: 'block-end', index: active.index, block: { type: active.type, text: active.text } }
+    active = undefined
+  }
 
   async function* toAsyncIterable(): AsyncGenerator<string | Uint8Array> {
     while (true) {
@@ -206,40 +214,40 @@ async function* streamCodex(
   try {
     for await (const event of parseResponsesStream(toAsyncIterable())) {
       switch (event.type) {
-        case 'text': {
-          if (textIndex === -1) {
-            textIndex++
-            yield { type: 'block-start', index: textIndex, blockType: 'text' }
-          }
-          yield { type: 'text-delta', index: textIndex, text: event.text }
-          break
-        }
+        case 'text':
         case 'reasoning': {
-          if (reasoningIndex === -1) {
-            reasoningIndex++
-            yield { type: 'block-start', index: reasoningIndex, blockType: 'reasoning' }
+          if (active?.type !== event.type) {
+            yield* closeBlock()
+            active = { index: nextIndex++, type: event.type, text: '' }
+            yield { type: 'block-start', index: active.index, blockType: active.type }
           }
-          yield { type: 'reasoning-delta', index: reasoningIndex, text: event.text }
+          active.text += event.text
+          yield { type: event.type === 'text' ? 'text-delta' : 'reasoning-delta', index: active.index, text: event.text }
           break
         }
         case 'tool_call': {
-          toolIndex++
-          yield { type: 'block-start', index: toolIndex, blockType: 'tool-call' }
-          yield { type: 'tool-call-delta', index: toolIndex, id: event.id, name: event.name, argumentsDelta: event.arguments }
-          yield { type: 'block-end', index: toolIndex, block: { type: 'tool-call', id: event.id, name: event.name } }
+          yield* closeBlock()
+          const index = nextIndex++
+          sawToolCall = true
+          yield { type: 'block-start', index, blockType: 'tool-call' }
+          yield { type: 'tool-call-delta', index, id: event.id, name: event.name, argumentsDelta: event.arguments }
+          yield { type: 'block-end', index, block: { type: 'tool-call', id: event.id, name: event.name, arguments: event.arguments } }
           break
         }
         case 'finish': {
-          yield { type: 'finish', reason: { kind: event.reason } }
+          yield* closeBlock()
+          yield { type: 'finish', reason: { kind: event.reason === 'stop' && sawToolCall ? 'tool-calls' : event.reason } }
           return
         }
         case 'error': {
+          yield* closeBlock()
           yield { type: 'finish', reason: { kind: 'error', failure: { message: event.message, code: event.code } } }
           return
         }
       }
     }
   } catch (err) {
+    yield* closeBlock()
     if (err instanceof CodexStreamError) {
       yield { type: 'finish', reason: { kind: 'error', failure: { message: err.message, code: 'stream-truncated' } } }
     } else {

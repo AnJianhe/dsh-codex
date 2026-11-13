@@ -24,7 +24,7 @@ export type CatalogModel = {
    * 这个模型提供的推理强度档，存在才带。宿主的选择器只在有这一项时把「强度」当
    * 独立的轴渲染（而不是每个强度一行）；缺席就是不给强度轴。
    */
-  readonly reasoning?: { readonly efforts: readonly CatalogEffort[] }
+  readonly reasoning?: { readonly efforts: readonly CatalogEffort[]; readonly defaultEffort?: string }
   /** 宿主压缩（dsh-compaction-basic）经 resolveModel 要的窗口；缺席即「未声明」。 */
   readonly context?: { readonly contextWindow: number }
 }
@@ -54,6 +54,6 @@ export type ModelStreamChunk =
   | { readonly type: 'text-delta'; readonly index: number; readonly text: string }
   | { readonly type: 'reasoning-delta'; readonly index: number; readonly text: string }
   | { readonly type: 'tool-call-delta'; readonly index: number; readonly id: string; readonly name?: string; readonly argumentsDelta: string }
-  | { readonly type: 'block-end'; readonly index: number; readonly block: { readonly type: string; readonly [key: string]: unknown } }
+  | { readonly type: 'block-end'; readonly index: number; readonly block: ({ readonly type: 'text' | 'reasoning'; readonly text: string } | { readonly type: 'tool-call'; readonly id: string; readonly name: string; readonly arguments: string }) }
   | { readonly type: 'usage'; readonly usage: { readonly inputTokens: number; readonly outputTokens: number; readonly totalTokens?: number } }
   | { readonly type: 'finish'; readonly reason: { readonly kind: string; readonly [key: string]: unknown } }
