@@ -124,5 +124,17 @@ function normalizeSchema(schema: Record<string, unknown> | undefined, toolName: 
       `Codex tool "${toolName}" requires an object parameter schema without top-level ${keyword ?? `type ${JSON.stringify(schema.type)}`}`,
     ), { code: 'unsupported-tool-schema' })
   }
-  return { ...schema, type: 'object' }
+  // Some raw DSH tools require metadata keys without declaring their schema.
+  // Codex rejects those (even in non-strict mode) with a misleading root-type
+  // error. Keep the key required and declare an unconstrained value; do not
+  // guess its type or remove it from required.
+  const properties = { ...(schema.properties as Record<string, unknown> | undefined) }
+  if (Array.isArray(schema.required)) {
+    for (const key of schema.required) {
+      if (typeof key === 'string' && !Object.hasOwn(properties, key)) {
+        Object.defineProperty(properties, key, { value: {}, enumerable: true, configurable: true, writable: true })
+      }
+    }
+  }
+  return { ...schema, type: 'object', properties }
 }

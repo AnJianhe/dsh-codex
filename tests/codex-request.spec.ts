@@ -81,3 +81,17 @@ describe('Codex tool schemas', () => {
     expect(() => build({ type: 'string' })).toThrow('kernel_definition_publish')
   })
 })
+
+
+it('declares required metadata omitted by kernel_definition_publish without guessing its type', () => {
+  const parameters = {
+    type: 'object', additionalProperties: false,
+    properties: { requestId: { type: 'string' }, definition: { type: 'object' } },
+    required: ['requestId', 'definition', 'commandId'],
+  }
+  const original = structuredClone(parameters)
+  const body = buildResponsesBody({ model: 'gpt-6-astra', messages: [], tools: [{ name: 'kernel_definition_publish', parameters }] })
+  const tool = (body.tools as { parameters: Record<string, unknown> }[])[0]!
+  expect(tool.parameters).toEqual({ ...parameters, properties: { ...parameters.properties, commandId: {} } })
+  expect(parameters).toEqual(original)
+})
