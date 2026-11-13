@@ -23,17 +23,39 @@ export function buildResponsesBody(input: {
       .filter(m => m.role !== 'system')
       .map(m => {
         // Content can be a plain string or an array of content parts
-        const text = typeof m.content === 'string'
-          ? m.content
-          : Array.isArray(m.content)
-            ? (m.content as unknown[]).map(part => {
-                if (typeof part === 'string') return part
-                if (typeof part === 'object' && part !== null && 'text' in part) {
-                  return String((part as Record<string, unknown>)['text'] ?? '')
-                }
-                return ''
-              }).join('')
-            : String(m.content ?? '')
+        let text: string
+        if (typeof m.content === 'string') {
+          text = m.content
+        } else if (Array.isArray(m.content)) {
+          text = (m.content as unknown[]).map(part => {
+            if (typeof part === 'string') return part
+            if (typeof part === 'object' && part !== null) {
+              const p = part as Record<string, unknown>
+              // Handle { type: 'text', text: '...' } and { type: 'input_text', text: '...' }
+              const textVal = p['text']
+              if (typeof textVal === 'string') return textVal
+              // text might be an array itself
+              if (Array.isArray(textVal)) {
+                return (textVal as unknown[]).map(t => typeof t === 'string' ? t : '').join('')
+              }
+              // Handle nested content arrays
+              if (Array.isArray(p['content'])) {
+                return (p['content'] as unknown[]).map(c => {
+                  if (typeof c === 'string') return c
+                  if (typeof c === 'object' && c !== null) {
+                    return String((c as Record<string, unknown>)['text'] ?? '')
+                  }
+                  return ''
+                }).join('')
+              }
+              // Debug: log unexpected format
+              console.error('[codex-request] unexpected content part:', JSON.stringify(p).slice(0, 200))
+            }
+            return ''
+          }).join('')
+        } else {
+          text = String(m.content ?? '')
+        }
         return {
           type: 'message',
           role: m.role,
