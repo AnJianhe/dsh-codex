@@ -11,6 +11,7 @@ import { loadCredential, refreshCredential } from './codex/auth.ts'
 import { CODEX_RESPONSES_URL, buildHeaders } from './codex/endpoints.ts'
 import { buildResponsesBody } from './codex/request.ts'
 import { parseResponsesStream, CodexStreamError } from './codex/stream.ts'
+import { describeError, redactDiagnostic } from './codex/diagnostics.ts'
 import { loadCatalog } from './codex/catalog.ts'
 import { updateQuota } from './codex/quota.ts'
 
@@ -194,6 +195,9 @@ async function* streamCodex(
 
   // Convert ReadableStream to AsyncIterable<string | Uint8Array>
   const reader = bodyStream.getReader()
+  const secrets = [credential.accessToken, credential.refreshToken, credential.accountId].filter((value): value is string => typeof value === 'string')
+  const requestId = res.headers.get('x-request-id') ?? res.headers.get('openai-request-id')
+  let readFailed = false
   let nextIndex = 0
   let sawToolCall = false
   let active: { index: number; type: 'text' | 'reasoning'; text: string } | undefined
@@ -205,7 +209,9 @@ async function* streamCodex(
 
   async function* toAsyncIterable(): AsyncGenerator<string | Uint8Array> {
     while (true) {
-      const { done, value } = await reader.read()
+      let result: ReadableStreamReadResult<Uint8Array>
+      try { result = await reader.read() } catch (error) { readFailed = true; throw error }
+      const { done, value } = result
       if (done) break
       yield value
     }
@@ -248,10 +254,16 @@ async function* streamCodex(
     }
   } catch (err) {
     yield* closeBlock()
-    if (err instanceof CodexStreamError) {
-      yield { type: 'finish', reason: { kind: 'error', failure: { message: err.message, code: 'stream-truncated' } } }
-    } else {
-      yield { type: 'finish', reason: { kind: 'error', failure: { message: 'Codex 流式响应解析失败', code: 'stream-error' } } }
-    }
+    const diagnostic = describeError(err, secrets)
+    const aborted = signal?.aborted === true || (err instanceof Error && err.name === 'AbortError')
+    const category = aborted ? '请求已取消' : err instanceof CodexStreamError ? '流式响应中断' : readFailed ? '响应流读取失败' : '流式响应解析失败'
+    const message = `Codex ${category}：${diagnostic.detail}${requestId ? ` (request_id=${redactDiagnostic(requestId, secrets)})` : ''}`
+    const code = aborted ? 'ABORTED' : diagnostic.code ?? (err instanceof CodexStreamError ? 'stream-truncated' : 'stream-error')
+    // Log the same sanitized facts that are persisted in assistant/attempt.
+    // Logging must never replace the original failure with another exception.
+    try { console.error('[codex]', message) } catch { /* diagnostic sink unavailable */ }
+    yield { type: 'finish', reason: { kind: aborted ? 'aborted' : 'error', failure: { message, code } } }
+  } finally {
+    reader.releaseLock()
   }
 }
