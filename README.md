@@ -53,3 +53,13 @@ MIT
 ## 流式错误诊断
 
 错误提示与会话 `assistant/attempt` 保留异常名称、消息、底层 `cause` 错误码，以及响应提供的 request ID；区分响应流读取失败、解析失败、缺少结束帧和请求取消。相同的脱敏摘要以 `[codex]` 前缀写入宿主 stderr。诊断最多保留五层原因链、2000 字符，不序列化请求/响应对象或记录认证凭据。历史中已被旧版本丢弃的异常无法补回。
+
+## 官方额度胶囊
+
+选择 `acp:acp-codex-global`（Codex Direct）时，输入框下方显示官方返回的用量窗口和积分；账号设置页也显示同一份数据。显示的是**已用百分比**，窗口长度按返回值标注，不固定假定为 5 小时/周。悬停可见来源、套餐、更新时间和重置时间。
+
+宿主只读请求 `https://chatgpt.com/backend-api/wham/usage`，复用当前本机 Codex 登录凭据；同账号至少间隔 60 秒刷新，并合并并发读取。推理响应（含错误响应）的官方额度头也可更新快照。浏览器可见时每 30 秒向同源 `/acp-codex/quota` 取快照，离开组件会停止轮询。
+
+缺失字段不会填 0。接口失败保留旧快照并标记“待刷新”；超过 5 分钟或窗口重置时间已过也标旧，不推算用量归零。切换账号、退出登录或认证失效时清除不适用的快照。缓存仅在内存中，宿主重启后重新取数。不会执行推理来查询额度，也不消耗重置额度。
+
+字段依据：[官方用量接口客户端](https://github.com/openai/codex/blob/main/codex-rs/backend-client/src/client/rate_limit_resets.rs)、[官方响应头解析](https://github.com/openai/codex/blob/main/codex-rs/codex-api/src/rate_limits.rs)。当前胶囊展示普通 Codex 限额，不把 additional_rate_limits 的模型专属额度混入。

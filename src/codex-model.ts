@@ -168,6 +168,11 @@ async function* streamCodex(
     }
   }
 
+  // 5. Update quota from response headers
+  const responseHeaders: Record<string, string> = {}
+  res.headers.forEach((value, key) => { responseHeaders[key] = value })
+  updateQuota(responseHeaders, credential.accountId)
+
   if (!res.ok) {
     const errBody = await res.text().catch(() => '')
     console.error('[codex] request failed', res.status, request.model, errBody.slice(0, 200))
@@ -177,11 +182,6 @@ async function* streamCodex(
     }
     return
   }
-
-  // 5. Update quota from response headers
-  const responseHeaders: Record<string, string> = {}
-  res.headers.forEach((value, key) => { responseHeaders[key] = value })
-  updateQuota(responseHeaders)
 
   // 6. Parse stream and yield chunks
   const bodyStream = res.body

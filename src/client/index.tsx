@@ -13,11 +13,12 @@ import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { SlotCore, SlotMap } from '@deepseek-ai/dsh-client-ui-slots'
 import { useState, useEffect, useCallback } from 'react'
 
+import { CodexQuotaPills, registerQuotaDock } from './quota-pill.tsx'
 import { NAMESPACE, fallbackT, zh, en } from './locales.ts'
 
 export const name = '@goodjin2/dsh-codex'
 
-export const inject = ['slots', 'remote', 'sessions', 'locale', 'uiConversation', 'uiWorkspace']
+export const inject = ['slots', 'remote', 'sessions', 'locale', 'uiConversation', 'uiWorkspace', 'modelDirectories']
 
 type Log = (message: string) => void
 
@@ -142,6 +143,7 @@ function CodexAccountSection() {
           )}
         </div>
       )}
+      <CodexQuotaPills />
       <div data-codex-account="models">
         可用模型 {models.length} 个
         <ul style={{ margin: 0, paddingLeft: '18px' }}>
@@ -180,6 +182,7 @@ export function apply(ctx: unknown, _config: unknown, log?: Log): () => void {
     ? log
     : (message) => { console.warn(`[codex-client] ${message}`) }
 
+  try {
   // 注册本插件的词典
   const registerLocale = ctx !== null && ctx !== undefined
     ? (ctx as Record<string, unknown>)['locale']
@@ -205,5 +208,8 @@ export function apply(ctx: unknown, _config: unknown, log?: Log): () => void {
     registerCodexAccountSection(slots as never, () => t('codex.section.label'), t)
   }, say)
 
+  safeRegister('codex quota dock', () => registerQuotaDock(ctx as Parameters<typeof registerQuotaDock>[0]), say)
+
+  } catch (error) { try { say(`client activation degraded: ${String(error)}`) } catch {} }
   return () => {}
 }
