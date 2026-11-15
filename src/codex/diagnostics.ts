@@ -34,3 +34,10 @@ export function describeError(error: unknown, secrets: readonly string[] = []): 
   }
   return { detail: redactDiagnostic(parts.join(' ← caused by: ') || '未知异常', secrets), ...(code === undefined ? {} : { code: redactDiagnostic(code, secrets) }) }
 }
+
+/** Match DSH's built-in retry codes without treating arbitrary parser errors as transient. */
+export function recoveryCode(code: string | undefined): string | undefined {
+  if (code && /^(UND_ERR_(CONNECT|HEADERS|BODY)_TIMEOUT|ETIMEDOUT)$/.test(code)) return 'TIMEOUT'
+  if (code && /^(UND_ERR_SOCKET|ECONNRESET|ECONNREFUSED|ECONNABORTED|EPIPE|EAI_AGAIN|ENETUNREACH|EHOSTUNREACH)$/.test(code)) return 'TRANSPORT'
+  return code
+}

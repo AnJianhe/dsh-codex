@@ -11,7 +11,7 @@ import { loadCredential, refreshCredential } from './codex/auth.ts'
 import { CODEX_RESPONSES_URL, buildHeaders } from './codex/endpoints.ts'
 import { buildResponsesBody } from './codex/request.ts'
 import { parseResponsesStream, CodexStreamError } from './codex/stream.ts'
-import { describeError, redactDiagnostic } from './codex/diagnostics.ts'
+import { describeError, redactDiagnostic, recoveryCode } from './codex/diagnostics.ts'
 import { loadCatalog } from './codex/catalog.ts'
 import { updateQuota } from './codex/quota.ts'
 
@@ -102,7 +102,20 @@ export function codexModelStream(
     const preset = config.presets[presetId]
     if (preset === undefined || preset.agent !== 'codex-global') return undefined
 
-    return streamCodex(presetId, request)
+    return streamWithDiagnostics(presetId, request)
+  }
+}
+
+/** One attempt only: the host owns retry delays, attempt persistence and cancellation. */
+async function* streamWithDiagnostics(presetId: string, request: ModelTurnRequest): AsyncGenerator<ModelStreamChunk> {
+  try { yield* streamCodex(presetId, request) }
+  catch (error) {
+    const diagnostic = describeError(error)
+    const aborted = (request.signal as AbortSignal | undefined)?.aborted === true || (error instanceof Error && error.name === 'AbortError')
+    yield { type: 'finish', reason: { kind: aborted ? 'aborted' : 'error', failure: {
+      code: aborted ? 'ABORTED' : recoveryCode(diagnostic.code) ?? 'request-error',
+      message: `Codex 请求失败：${diagnostic.detail}`,
+    } } }
   }
 }
 
@@ -258,7 +271,7 @@ async function* streamCodex(
     const aborted = signal?.aborted === true || (err instanceof Error && err.name === 'AbortError')
     const category = aborted ? '请求已取消' : err instanceof CodexStreamError ? '流式响应中断' : readFailed ? '响应流读取失败' : '流式响应解析失败'
     const message = `Codex ${category}：${diagnostic.detail}${requestId ? ` (request_id=${redactDiagnostic(requestId, secrets)})` : ''}`
-    const code = aborted ? 'ABORTED' : diagnostic.code ?? (err instanceof CodexStreamError ? 'stream-truncated' : 'stream-error')
+    const code = aborted ? 'ABORTED' : recoveryCode(diagnostic.code) ?? (err instanceof CodexStreamError ? 'TRANSPORT' : 'stream-error')
     // Log the same sanitized facts that are persisted in assistant/attempt.
     // Logging must never replace the original failure with another exception.
     try { console.error('[codex]', message) } catch { /* diagnostic sink unavailable */ }

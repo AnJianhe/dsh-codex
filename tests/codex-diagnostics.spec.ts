@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { describeError } from '../src/codex/diagnostics.ts'
+import { describeError, recoveryCode } from '../src/codex/diagnostics.ts'
 import { codexModelStream } from '../src/codex-model.ts'
 
 vi.mock('../src/codex/auth.ts', () => ({ loadCredential: vi.fn(async () => ({ accessToken: 'private-access', refreshToken: 'private-refresh', accountId: 'private-account' })), refreshCredential: vi.fn() }))
@@ -24,7 +24,7 @@ describe('stream diagnostics', () => {
     const cause = Object.assign(new Error('other side closed'), { code: 'UND_ERR_SOCKET' })
     const { chunks, body } = await failStream(new TypeError('terminated', { cause }))
     expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'error', failure: {
-      code: 'UND_ERR_SOCKET', message: 'Codex 响应流读取失败：TypeError: terminated ← caused by: Error [UND_ERR_SOCKET]: other side closed (request_id=req_test)',
+      code: 'TRANSPORT', message: 'Codex 响应流读取失败：TypeError: terminated ← caused by: Error [UND_ERR_SOCKET]: other side closed (request_id=req_test)',
     } } })
     expect(log).toHaveBeenCalledWith('[codex]', expect.stringContaining('UND_ERR_SOCKET'))
     expect(body.locked).toBe(false)
@@ -59,5 +59,22 @@ describe('stream diagnostics', () => {
     expect(describeError(error).detail).toBe('Error: cycle')
     expect(() => describeError(new Proxy({}, { get() { throw new Error('getter') } }))).not.toThrow()
     expect(describeError(new Error('x'.repeat(10000))).detail.length).toBeLessThanOrEqual(2000)
+  })
+})
+
+describe('official host recovery codes', () => {
+  it('only classifies known transient errors', () => {
+    expect(recoveryCode('UND_ERR_SOCKET')).toBe('TRANSPORT')
+    expect(recoveryCode('UND_ERR_BODY_TIMEOUT')).toBe('TIMEOUT')
+    for (const code of ['ABORTED', 'http-error', 'auth-expired', 'stream-error']) expect(recoveryCode(code)).toBe(code)
+  })
+  it('reports pre-response disconnects without performing local retries', async () => {
+    const fetcher = vi.fn().mockRejectedValue(new TypeError('fetch failed', { cause: Object.assign(new Error('reset'), { code: 'ECONNRESET' }) }))
+    vi.stubGlobal('fetch', fetcher)
+    const stream = codexModelStream({ presets: { codex: { agent: 'codex-global', models: [] } } })
+    const chunks = []
+    for await (const chunk of stream('codex', { provider: 'codex', model: 'model' })!) chunks.push(chunk)
+    expect(chunks.at(-1)).toMatchObject({ reason: { kind: 'error', failure: { code: 'TRANSPORT', message: expect.stringContaining('ECONNRESET') } } })
+    expect(fetcher).toHaveBeenCalledTimes(1)
   })
 })

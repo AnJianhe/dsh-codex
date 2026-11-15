@@ -63,3 +63,12 @@ MIT
 缺失字段不会填 0。接口失败保留旧快照并标记“待刷新”；超过 5 分钟或窗口重置时间已过也标旧，不推算用量归零。切换账号、退出登录或认证失效时清除不适用的快照。缓存仅在内存中，宿主重启后重新取数。不会执行推理来查询额度，也不消耗重置额度。
 
 字段依据：[官方用量接口客户端](https://github.com/openai/codex/blob/main/codex-rs/backend-client/src/client/rate_limit_resets.rs)、[官方响应头解析](https://github.com/openai/codex/blob/main/codex-rs/codex-api/src/rate_limits.rs)。当前胶囊展示普通 Codex 限额，不把 additional_rate_limits 的模型专属额度混入。
+
+### 官方请求重试
+
+Codex 将明确的连接中断（如 `UND_ERR_SOCKET`、`ECONNRESET`）及流提前结束报告为
+宿主标准 `TRANSPORT`，网络超时报告为 `TIMEOUT`；原始异常与底层错误码仍保留在错误详情中。
+由 DSH 基础 bundle 的 `dsh-llm-retry` 执行默认有限重试（最多 5 次，指数退避），
+持久化 `llm/retry` / `llm/retry-started` 事件。插件内部不另建请求重试循环。
+用户取消、登录失败、普通 HTTP 错误与解析错误不因本次映射而重试。
+这属于请求级恢复；auto-resume 的应用退出/崩溃后会话恢复仍是独立职责。
