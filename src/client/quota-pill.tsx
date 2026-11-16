@@ -14,6 +14,8 @@ export function quotaLabels(reply: QuotaReply | undefined): QuotaLabel[] {
     ['次窗口', q.secondaryPercent, q.secondaryWindowMinutes, q.secondaryResetAt],
   ] as const) {
     if (percent === undefined) continue
+    // A secondary percentage without a period is not a meaningful quota window.
+    if (fallback === '次窗口' && !(minutes !== undefined && minutes > 0)) continue
     const window = !minutes ? fallback : minutes % 1440 === 0 ? `${minutes / 1440}天` : minutes % 60 === 0 ? `${minutes / 60}小时` : `${minutes}分钟`
     entries.push({ percent, shortWindow: minutes !== undefined && minutes < 1440, label: `${window} ${percent}%`, title: `已用 ${percent}%；${detail}${resetAt === undefined ? '；重置时间未知' : `；重置：${new Date(resetAt * 1000).toLocaleString()}`}` })
   }
