@@ -7,8 +7,7 @@ type QuotaLabel = { label: string; title: string; percent?: number; shortWindow?
 export function quotaLabels(reply: QuotaReply | undefined): QuotaLabel[] {
   if (!reply?.snapshot) return [{ label: reply?.error ?? '额度读取中…', title: 'Codex 官方额度；未返回的数据不会按 0 显示' }]
   const { quota: q, updatedAt, source } = reply.snapshot
-  const suffix = reply.stale ? ' · 待刷新' : ''
-  const detail = `来源：${source === 'official-usage' ? '官方用量接口' : '官方响应头'}；更新：${new Date(updatedAt).toLocaleString()}${q.planType ? `；套餐：${q.planType}` : ''}${reply.error ? `；${reply.error}` : ''}`
+  const detail = `${reply.stale ? '待刷新；' : ''}来源：${source === 'official-usage' ? '官方用量接口' : '官方响应头'}；更新：${new Date(updatedAt).toLocaleString()}${q.planType ? `；套餐：${q.planType}` : ''}${reply.error ? `；${reply.error}` : ''}`
   const entries: QuotaLabel[] = []
   for (const [fallback, percent, minutes, resetAt] of [
     ['主窗口', q.primaryPercent, q.primaryWindowMinutes, q.primaryResetAt],
@@ -16,11 +15,11 @@ export function quotaLabels(reply: QuotaReply | undefined): QuotaLabel[] {
   ] as const) {
     if (percent === undefined) continue
     const window = !minutes ? fallback : minutes % 1440 === 0 ? `${minutes / 1440}天` : minutes % 60 === 0 ? `${minutes / 60}小时` : `${minutes}分钟`
-    entries.push({ percent, shortWindow: minutes !== undefined && minutes < 1440, label: `${window} ${percent}%${suffix}`, title: `已用 ${percent}%；${detail}${resetAt === undefined ? '；重置时间未知' : `；重置：${new Date(resetAt * 1000).toLocaleString()}`}` })
+    entries.push({ percent, shortWindow: minutes !== undefined && minutes < 1440, label: `${window} ${percent}%`, title: `已用 ${percent}%；${detail}${resetAt === undefined ? '；重置时间未知' : `；重置：${new Date(resetAt * 1000).toLocaleString()}`}` })
   }
-  if (q.creditsUnlimited === true) entries.push({ label: `积分不限${suffix}`, title: detail })
-  else if (q.creditsBalance !== undefined) entries.push({ label: `积分 ${q.creditsBalance}${suffix}`, title: detail })
-  if (!entries.length) entries.push({ label: `官方未提供用量数字${suffix}`, title: detail })
+  if (q.creditsUnlimited === true) entries.push({ label: `积分不限`, title: detail })
+  else if (q.creditsBalance !== undefined) entries.push({ label: `积分 ${q.creditsBalance}`, title: detail })
+  if (!entries.length) entries.push({ label: `官方未提供用量数字`, title: detail })
   return entries
 }
 

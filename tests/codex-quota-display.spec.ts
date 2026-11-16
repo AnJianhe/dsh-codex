@@ -18,8 +18,9 @@ describe('official quota values and display', () => {
   })
   it('uses official window lengths and marks cached data without claiming a reset', () => {
     const labels = quotaLabels({ok:true,stale:true,snapshot:{source:'official-usage',updatedAt:1000,quota:{primaryPercent:100,primaryWindowMinutes:300,secondaryPercent:12.5,secondaryWindowMinutes:10080}}})
-    expect(labels.map(v=>v.label)).toEqual(['5小时 100% · 待刷新','7天 12.5% · 待刷新'])
+    expect(labels.map(v=>v.label)).toEqual(['5小时 100%','7天 12.5%'])
     expect(labels[0]?.title).toContain('重置时间未知')
+    expect(labels.every(v => v.title.includes('待刷新') && v.title.includes(new Date(1000).toLocaleString()))).toBe(true)
     expect(quotaLabels({ok:false,stale:false,error:'未登录 Codex'})[0]?.label).toBe('未登录 Codex')
   })
   it('only shows the Direct Codex provider and survives unavailable directory services', () => {
