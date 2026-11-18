@@ -10,6 +10,12 @@ DSH 插件：Codex 模型行 — 直接 HTTP 调用 Codex `/responses` 端点，
 dsh plugin --profile <你的 profile> add github:goodjin/dsh-codex
 ```
 
+也可以直接装 npm 上的包（效果相同，同样免构建步骤）：
+
+```sh
+dsh plugin --profile <你的 profile> add @goodjin2/dsh-codex
+```
+
 也可以下载 [v0.1.0 发布页](https://github.com/goodjin/dsh-codex/releases/tag/v0.1.0) 的 tarball 安装：
 
 ```sh
