@@ -41,8 +41,11 @@ dsh plugin --profile <你的 profile> add github:goodjin/dsh-codex
 pnpm install
 pnpm typecheck
 pnpm test
-pnpm build:client
+pnpm build        # 宿主产物 lib/host + 浏览器产物 lib/client.js
 ```
+
+仓库随附编译产物（`lib/host/**` 与 `lib/client.js`）：git 与 npm 安装都不在用户机器上跑构建脚本，
+因此改完源码要跑 `npm run build` 并提交产物；`npm run check` 会检查产物是否与源码一致。
 
 ## 架构
 

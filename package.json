@@ -16,12 +16,12 @@
     "node": "^22.19.0 || >=24.0.0",
     "dsh": ">=0.2.1-rc.2 <0.3"
   },
-  "main": "./src/entry.ts",
+  "main": "./lib/host/entry.js",
   "types": "./src/entry.ts",
   "exports": {
     ".": {
       "types": "./src/entry.ts",
-      "default": "./src/entry.ts"
+      "default": "./lib/host/entry.js"
     },
     "./client": {
       "types": "./src/client/index.tsx",
@@ -29,11 +29,11 @@
     },
     "./codex-quota": {
       "types": "./src/codex/quota.ts",
-      "default": "./src/codex/quota.ts"
+      "default": "./lib/host/codex/quota.js"
     },
     "./codex-routes": {
       "types": "./src/codex-routes.ts",
-      "default": "./src/codex-routes.ts"
+      "default": "./lib/host/codex-routes.js"
     },
     "./package.json": "./package.json"
   },
@@ -44,15 +44,21 @@
     "cordis.patch.yml",
     "lib/client.js",
     "lib/client.js.map",
+    "lib/host/**/*.js",
     "src/**/*.ts",
     "src/**/*.tsx",
-    "tsdown.config.ts"
+    "tsdown.config.ts",
+    "tsconfig.build.json"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "tsc --noEmit",
-    "build:client": "tsc -p tsconfig.json && tsdown"
+    "build": "npm run build:host && npm run build:client",
+    "build:host": "tsc -p tsconfig.build.json",
+    "build:client": "tsc -p tsconfig.json && tsdown",
+    "prepack": "npm run build",
+    "check:build": "node scripts/check-build-output.mjs",
+    "check": "npm run typecheck && npm test && node scripts/check-build-output.mjs"
   },
   "keywords": [
     "chatgpt",
