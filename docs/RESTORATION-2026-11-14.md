@@ -5,7 +5,7 @@
 - 完整恢复前备份：`backup-pre-restore-2026-11-14`（含原有客户端文件删除）。
 - 恢复基线：`6d0470f`，2026-11-10 21:38，PKCE 登录端口 1456。
 - 未采用当天稍后的 device-code 登录切换；后续历史记录了该路径的 403。
-- GitHub：`goodjin/dsh-codex`，私有仓库。私有仓库安装需要有权限的 GitHub 账号。
+- GitHub：`goodjin/dsh-codex`（公开仓库），安装不需要账号权限。
 
 ## 从基线保留与修复
 

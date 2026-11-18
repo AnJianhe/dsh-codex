@@ -2,11 +2,17 @@
 
 DSH plugin: Codex 模型行 — 直接 HTTP 调用 Codex `/responses` 端点，复用本地 Codex CLI 的 OAuth 凭据。
 
-本仓库为 GitHub 私有仓库。恢复基线与验证记录见 [2026-11-14 恢复记录](docs/RESTORATION-2026-11-14.md)。
+恢复基线与验证记录见 [2026-11-14 恢复记录](docs/RESTORATION-2026-11-14.md)。
 
 ## 安装
 
 在 DSH profile 的 `package.json` 中添加：
+
+```sh
+dsh plugin --profile <你的 profile> add github:goodjin/dsh-codex
+```
+
+或手工安装：
 
 ```json
 {

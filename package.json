@@ -1,7 +1,7 @@
 {
   "name": "@goodjin2/dsh-codex",
   "version": "0.1.0",
-  "description": "DSH plugin: Codex 模型行（直接 HTTP 调用 /responses 端点，复用本地 Codex CLI OAuth 凭据）",
+  "description": "DSH plugin: Codex model row — calls the Codex /responses endpoint directly and reuses the local Codex CLI OAuth credential.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/goodjin/dsh-codex.git"
@@ -13,7 +13,8 @@
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "engines": {
-    "node": "^22.19.0 || >=24.0.0"
+    "node": "^22.19.0 || >=24.0.0",
+    "dsh": ">=0.2.1-rc.2 <0.3"
   },
   "main": "./src/entry.ts",
   "types": "./src/entry.ts",
@@ -55,17 +56,19 @@
     "prepare": "npm run build:client"
   },
   "keywords": [
+    "chatgpt",
+    "codex",
     "deepseek-harness",
     "dsh",
-    "plugin",
-    "codex",
-    "model"
+    "dsh-plugin",
+    "model",
+    "plugin"
   ],
   "author": "goodjin",
   "license": "MIT",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org",
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
   },
   "dsh": {
     "bundle": {
@@ -121,6 +124,5 @@
     "tsdown": "^0.15.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
-  },
-  "private": true
+  }
 }
