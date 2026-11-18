@@ -52,8 +52,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "tsc --noEmit",
-    "build:client": "tsc -p tsconfig.json && tsdown",
-    "prepare": "npm run build:client"
+    "build:client": "tsc -p tsconfig.json && tsdown"
   },
   "keywords": [
     "chatgpt",

@@ -1,6 +1,11 @@
 node_modules
-lib
 *.js.map
+
+# 预构建的浏览器产物随仓库发布：源码安装不需要构建步骤。
+# 其余 lib/ 内容（tsc 中间产物）不进版本库。
+lib/*
+!lib/client.js
+!lib/client.js.map
 
 # 本地工作树目录（agent 隔离开发用）
 .worktrees/
